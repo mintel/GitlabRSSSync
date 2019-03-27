@@ -10,6 +10,7 @@ feeds:
     feed_url: https://cloud.google.com/feeds/kubernetes-engine-release-notes.xml
     name: GKE release notes
     gitlab_project_id: 11494338
+    added_since: "2019-03-27T15:00:00Z"
     labels:
       - GKEReleaseNotes
       - Needs/Triage
@@ -17,6 +18,7 @@ feeds:
     feed_url: https://cloud.google.com/feeds/kubernetes-engine-security-bulletins.xml
     name: GKE Security Updates
     gitlab_project_id: 11494338
+    added_since: "2019-03-27T15:00:00Z"
     labels:
       - GKESecurityUpdates
       - Needs/Triage

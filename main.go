@@ -33,6 +33,7 @@ type Feed struct {
 	Name            string
 	GitlabProjectID int `yaml:"gitlab_project_id"`
 	Labels          []string
+	AddedSince      time.Time `yaml:"added_since"`
 }
 
 type SyncedItems struct {
@@ -59,13 +60,11 @@ func (feed Feed) checkFeed(db *gorm.DB, gitlabClient *gitlab.Client) {
 	var newArticle []*gofeed.Item
 	var oldArticle []*gofeed.Item
 	for _, item := range rss.Items {
-
 		found := !db.First(&SyncedItems{}, "feed = ? AND uuid = ?", feed.ID, item.GUID).RecordNotFound()
 		if found == true {
 			oldArticle = append(oldArticle, item)
 		} else {
 			newArticle = append(newArticle, item)
-
 		}
 	}
 
@@ -90,11 +89,16 @@ func (feed Feed) checkFeed(db *gorm.DB, gitlabClient *gitlab.Client) {
 			time = item.PublishedParsed
 		}
 
+		if time.Before(feed.AddedSince) {
+			fmt.Printf("Ignoring %s as its date is < the specified AddedSince (Item: %s vs AddedSince: %s) \n", item.Title, time, feed.AddedSince)
+			continue
+		}
+
 		issueOptions := &gitlab.CreateIssueOptions{
 			Title:       gitlab.String(item.Title),
 			Description: gitlab.String(body),
 			Labels:      feed.Labels,
-			CreatedAt:	 time,
+			CreatedAt:   time,
 		}
 
 		//fmt.Println(issueOptions)
@@ -120,12 +124,14 @@ func readConfig(path string) *Config {
 
 	err = yaml.Unmarshal(data, config)
 	if err != nil {
-		log.Fatalln("Unable to parse config YAML \n ")
+		fmt.Printf("Unable to parse config YAML \n %s \n", err)
+		panic(err)
 	}
+
 	return config
 }
 
-func initialise(env EnvValues) (db *gorm.DB, client *gitlab.Client, config *Config){
+func initialise(env EnvValues) (db *gorm.DB, client *gitlab.Client, config *Config) {
 	gaugeOpts := prometheus.GaugeOpts{
 		Name: "last_run_time",
 		Help: "Last Run Time in Unix Seconds",
@@ -156,7 +162,7 @@ func initialise(env EnvValues) (db *gorm.DB, client *gitlab.Client, config *Conf
 func main() {
 	env := readEnv()
 	db, gitlabClient, config := initialise(env)
-	//defer db.Close()
+	defer db.Close()
 
 	go func() {
 		for {
