@@ -1,15 +1,21 @@
 # Gitlab RSS Sync
-Create Gitlab issues from RSS Feeds
+Create Gitlab issues from RSS Feeds with optional labelling.  Created to monitor RSS feeds and bring posts to
+our attention (Security Releases, Product Updates etc)
 
 ## Config file
-```$yaml
+
+The config file **MUST** be named config.yaml, an example one is provided [here](config.yaml.example).  Below is a brief
+ description of its contents.
+
+```yaml
 interval: 300 // Interval in seconds to check the RSS feeds.
 feeds:
   - id: test //Specify a feed ID that is used internally for duplicate detection.
     feed_url: http://example.com/rss.xml // The Feed URL.
     name: Test Feed // A User friendly display name.
     gitlab_project_id: 12345 // The Gitlab project ID to create issues under.
-    labels: // A list of labels to add to created Issues.
+    added_since: "2019-03-27T15:00:00Z" // (Optional) For longer RSS feeds specify a date to exclude items published/updated earlier than this
+    labels: // (Optional) A list of labels to add to created Issues.
       - TestLabel
    - id: ...
 ```
@@ -28,4 +34,6 @@ Make sure the location of your DATA_DIR environment variable is set to a persist
 that is contained within it stores the state of which RSS items have already been synced.
 
 ### Run it
-`docker run -e GITLAB_API_TOKEN=<INSERT_TOKEN> -e DATA_DIR=/data -e CONFIG_DIR=/app -v <PATH_TO_DATA_DIR>:/data -v <PATH_TO_CONFIG_DIR>/config adamhf/rss-sync:latest`
+```sh
+docker run -e GITLAB_API_TOKEN=<INSERT_TOKEN> -e DATA_DIR=/data -e CONFIG_DIR=/app -v <PATH_TO_DATA_DIR>:/data -v <PATH_TO_CONFIG_DIR>/config adamhf/rss-sync:latest
+```
