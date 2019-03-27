@@ -14,10 +14,11 @@ feeds:
     feed_url: http://example.com/rss.xml // The Feed URL.
     name: Test Feed // A User friendly display name.
     gitlab_project_id: 12345 // The Gitlab project ID to create issues under.
-    added_since: "2019-03-27T15:00:00Z" // (Optional) For longer RSS feeds specify a date to exclude items published/updated earlier than this
+    added_since: "2019-03-27T15:00:00Z" // (Optional) For longer RSS feeds specify a ISO 8601 DateTime to exclude items published/updated earlier than this
     labels: // (Optional) A list of labels to add to created Issues.
       - TestLabel
-   - id: ...
+   - id: feed2
+     ...
 ```
 
 ## Docker
@@ -37,3 +38,6 @@ that is contained within it stores the state of which RSS items have already bee
 ```sh
 docker run -e GITLAB_API_TOKEN=<INSERT_TOKEN> -e DATA_DIR=/data -e CONFIG_DIR=/app -v <PATH_TO_DATA_DIR>:/data -v <PATH_TO_CONFIG_DIR>/config adamhf/rss-sync:latest
 ```
+
+### TODO
+* Make the retroactive setting of the Gitlab creation time optional.
