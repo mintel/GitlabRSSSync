@@ -1,0 +1,13 @@
+interval: 300
+feeds:
+  - feed_url: http://feeds.bbci.co.uk/news/england/rss.xml
+    name: BBC World
+    gitlab_project_id: 11494338
+    labels:
+      - BBC
+  - feed_url: https://cloud.google.com/feeds/kubernetes-engine-release-notes.xml
+    name: GKE release notes
+    gitlab_project_id: 11494338
+    labels:
+      - GKEReleaseNotes
+      - Needs/Triage
