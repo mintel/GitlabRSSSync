@@ -82,5 +82,5 @@ Feed URL: https://cloud.google.com/feeds/kubernetes-engine-security-bulletins.xm
 ![GKE Security updates](screenshots/GKESecurityUpdate.png "GKE Security updates")
 
 
-### TODO
+## TODO
 * Make the retroactive setting of the Gitlab creation time optional.
