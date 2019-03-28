@@ -2,6 +2,19 @@
 Create Gitlab issues from RSS Feeds with optional labelling.  Created to monitor RSS feeds and bring posts to
 our attention (Security Releases, Product Updates etc)
 
+## Avoiding Duplication
+We try to be as clever as is reasonably possible in terms of not duplicating RSS feed items into Gitlab.
+A SQLite DB is used to store the GUID/FeedID combination which is checked when assessing articles for synchronisation.
+In addition we also add the RSS feed's item GUID at the bottom of the issue description.  Before synchronising an RSS item
+we run an issue search in the associated project, if we dont find the GUID in any issue we assume its not already been created.
+This helps to guard against scenarios where you lose the SQLite DB and dont want RSS items reduplicating into Gitlab.
+If found in Gitlab it is marked as syncronised in the local database as well as printing an link to the existing issue(s) to stdout.
+
+## Limiting what is initially synced.
+Each feed entry in the config file can have an "added_since" property set.  This is used to only sync RSS items that have a
+Published/Updated date greater than the provided value.  This can be useful on RSS feeds where you dont want to import historic items,
+just new posts going forward.
+
 ## Config file
 
 The config file **MUST** be named config.yaml, an example one is provided [here](config.yaml.example).  Below is a brief
@@ -35,7 +48,7 @@ Make sure the location of your DATA_DIR environment variable is set to a persist
 that is contained within it stores the state of which RSS items have already been synced.
 
 ### Run it
-```sh
+```bash
 docker run -e GITLAB_API_TOKEN=<INSERT_TOKEN> -e DATA_DIR=/data -e CONFIG_DIR=/app -v <PATH_TO_DATA_DIR>:/data -v <PATH_TO_CONFIG_DIR>/config adamhf/rss-sync:latest
 ```
 

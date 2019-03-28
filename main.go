@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -48,6 +49,33 @@ type EnvValues struct {
 	GitlabAPIKey string
 }
 
+func hasExistingGitlabIssue(guid string, projectID int, gitlabClient *gitlab.Client) bool{
+	searchOptions := &gitlab.SearchOptions{
+		Page:1,
+		PerPage:10,
+	}
+	issues, _, err := gitlabClient.Search.IssuesByProject(projectID, guid, searchOptions)
+	if err != nil {
+		fmt.Printf("Unable to query Gitlab for existing issues\n")
+	}
+	retVal := false
+	if len(issues) == 1 {
+		retVal = true
+		fmt.Printf("Found existing issues for %s in project (%s)\n", guid, issues[0].WebURL)
+
+	} else if len(issues) > 1 {
+		retVal = true
+		var urls []string
+		for _, issue := range issues {
+			urls = append(urls, issue.WebURL)
+		}
+		fmt.Printf("Found multiple existing issues for %s in project (%s)\n", guid, strings.Join(urls, ", "))
+	}
+
+	return retVal
+
+}
+
 func (feed Feed) checkFeed(db *gorm.DB, gitlabClient *gitlab.Client) {
 	fp := gofeed.NewParser()
 	rss, err := fp.ParseURL(feed.FeedURL)
@@ -73,14 +101,6 @@ func (feed Feed) checkFeed(db *gorm.DB, gitlabClient *gitlab.Client) {
 	fmt.Printf("New Items: %d\n", len(newArticle))
 
 	for _, item := range newArticle {
-		// Prefer description over content
-		var body string
-		if item.Description != "" {
-			body = item.Description
-		} else {
-			body = item.Content
-		}
-
 		var time *time.Time
 		// Prefer updated time to published
 		if item.UpdatedParsed != nil {
@@ -94,9 +114,24 @@ func (feed Feed) checkFeed(db *gorm.DB, gitlabClient *gitlab.Client) {
 			continue
 		}
 
+		// Check Gitlab to see if we already have a matching issue there
+		if hasExistingGitlabIssue(item.GUID, feed.GitlabProjectID, gitlabClient) {
+			// We think its new but there is already a matching GUID in Gitlab.  Mark as Sync'd
+			db.Create(&SyncedItems{UUID: item.GUID, Feed: feed.ID})
+			continue
+		}
+
+		// Prefer description over content
+		var body string
+		if item.Description != "" {
+			body = item.Description
+		} else {
+			body = item.Content
+		}
+
 		issueOptions := &gitlab.CreateIssueOptions{
 			Title:       gitlab.String(item.Title),
-			Description: gitlab.String(body),
+			Description: gitlab.String(body + "\n" + item.GUID),
 			Labels:      feed.Labels,
 			CreatedAt:   time,
 		}
