@@ -39,5 +39,10 @@ that is contained within it stores the state of which RSS items have already bee
 docker run -e GITLAB_API_TOKEN=<INSERT_TOKEN> -e DATA_DIR=/data -e CONFIG_DIR=/app -v <PATH_TO_DATA_DIR>:/data -v <PATH_TO_CONFIG_DIR>/config adamhf/rss-sync:latest
 ```
 
+## Prometheus Metrics
+Two metrics (above and beyond what are exposed by the Go Prometheus library) are exposed on :8080/metrics
+* last_run_time - The time of the last feed checks, useful for creating alerts to check for successful runs.
+* issues_created - The total number of issues created in Gitlab, useful to check for runaways.
+
 ### TODO
 * Make the retroactive setting of the Gitlab creation time optional.
