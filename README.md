@@ -44,5 +44,14 @@ Two metrics (above and beyond what are exposed by the Go Prometheus library) are
 * last_run_time - The time of the last feed checks, useful for creating alerts to check for successful runs.
 * issues_created - The total number of issues created in Gitlab, useful to check for runaways.
 
+## Example Issues
+### GKE Release Notes
+Feed URL: https://cloud.google.com/feeds/kubernetes-engine-release-notes.xml
+![GKE Release Notes](screenshots/GKEReleaseNotes.png "GKE Release Notes")
+### GKE Security Updates
+Feed URL: https://cloud.google.com/feeds/kubernetes-engine-security-bulletins.xml
+![GKE Security updates](screenshots/GKESecurityUpdate.png "GKE Security updates")
+
+
 ### TODO
 * Make the retroactive setting of the Gitlab creation time optional.
