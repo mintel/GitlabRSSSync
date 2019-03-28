@@ -108,9 +108,8 @@ func (feed Feed) checkFeed(db *gorm.DB, gitlabClient *gitlab.Client) {
 		} else {
 			fmt.Printf("Created Gitlab Issue '%s' in project: %d' \n", item.Title, feed.GitlabProjectID)
 			db.Create(&SyncedItems{UUID: item.GUID, Feed: feed.ID})
+			issuesCreatedCounter.Inc()
 		}
-		issuesCreatedCounter.Inc()
-
 	}
 }
 
