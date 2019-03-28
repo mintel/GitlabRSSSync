@@ -21,18 +21,34 @@ The config file **MUST** be named config.yaml, an example one is provided [here]
  description of its contents.
 
 ```yaml
-interval: 300 // Interval in seconds to check the RSS feeds.
+interval: 300
 feeds:
-  - id: test //Specify a feed ID that is used internally for duplicate detection.
-    feed_url: http://example.com/rss.xml // The Feed URL.
-    name: Test Feed // A User friendly display name.
-    gitlab_project_id: 12345 // The Gitlab project ID to create issues under.
-    added_since: "2019-03-27T15:00:00Z" // (Optional) For longer RSS feeds specify a ISO 8601 DateTime to exclude items published/updated earlier than this
-    labels: // (Optional) A list of labels to add to created Issues.
+  - id: test 
+    feed_url: http://example.com/rss.xml
+    name: Test Feed
+    gitlab_project_id: 12345
+    added_since: "2019-03-27T15:00:00Z"
+    labels:
       - TestLabel
    - id: feed2
      ...
 ```
+### Global
+| Attribute | Type | Required | Description                                 |
+|-----------|------|----------|---------------------------------------------|
+| interval  | int  | yes      | The interval in seconds between feed checks |
+
+### Feeds
+| Attribute         | Type   | Required | Description                                                                                           |
+|-------------------|--------|----------|-------------------------------------------------------------------------------------------------------|
+| id                | string | yes      | A feed ID that is used internally for duplicate detection.                                            |
+| feed_url          | string | yes      | The URL of the feed                                                                                   |
+| name              | string | yes      | A User friendly display name.                                                                         |
+| gitlab_project_id | int    | yes      | The Gitlab project ID to create issues under.                                                         |
+| added_since       | string | no       | For longer RSS feeds specify a ISO 8601 DateTime to exclude items published/updated earlier than this |
+| Labels            | Array  | no       | A list of labels to add to created Issues                                                             |
+
+
 
 ## Docker
 A Docker image is made available on [DockerHub](https://hub.docker.com/r/adamhf/gitlabrsssync)
