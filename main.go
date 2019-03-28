@@ -49,10 +49,10 @@ type EnvValues struct {
 	GitlabAPIKey string
 }
 
-func hasExistingGitlabIssue(guid string, projectID int, gitlabClient *gitlab.Client) bool{
+func hasExistingGitlabIssue(guid string, projectID int, gitlabClient *gitlab.Client) bool {
 	searchOptions := &gitlab.SearchOptions{
-		Page:1,
-		PerPage:10,
+		Page:    1,
+		PerPage: 10,
 	}
 	issues, _, err := gitlabClient.Search.IssuesByProject(projectID, guid, searchOptions)
 	if err != nil {
@@ -110,7 +110,8 @@ func (feed Feed) checkFeed(db *gorm.DB, gitlabClient *gitlab.Client) {
 		}
 
 		if time.Before(feed.AddedSince) {
-			fmt.Printf("Ignoring %s as its date is < the specified AddedSince (Item: %s vs AddedSince: %s) \n", item.Title, time, feed.AddedSince)
+			fmt.Printf("Ignoring %s as its date is < the specified AddedSince (Item: %s vs AddedSince: %s)\n",
+				item.Title, time, feed.AddedSince)
 			continue
 		}
 
@@ -136,15 +137,16 @@ func (feed Feed) checkFeed(db *gorm.DB, gitlabClient *gitlab.Client) {
 			CreatedAt:   time,
 		}
 
-		//fmt.Println(issueOptions)
-		_, _, err := gitlabClient.Issues.CreateIssue(feed.GitlabProjectID, issueOptions)
-		if err != nil {
+		if _, _, err := gitlabClient.Issues.CreateIssue(feed.GitlabProjectID, issueOptions); err != nil {
 			fmt.Printf("Unable to create Gitlab issue for %s \n %s \n", feed.Name, err)
-		} else {
-			fmt.Printf("Created Gitlab Issue '%s' in project: %d' \n", item.Title, feed.GitlabProjectID)
-			db.Create(&SyncedItems{UUID: item.GUID, Feed: feed.ID})
-			issuesCreatedCounter.Inc()
+			continue
 		}
+		if err := db.Create(&SyncedItems{UUID: item.GUID, Feed: feed.ID}).Error; err != nil {
+			fmt.Printf("Unable to persist in %s DB: %s \n", item.Title, err)
+			continue
+		}
+		issuesCreatedCounter.Inc()
+		fmt.Printf("Created Gitlab Issue '%s' in project: %d' \n", item.Title, feed.GitlabProjectID)
 	}
 }
 
@@ -156,8 +158,7 @@ func readConfig(path string) *Config {
 		log.Fatalln(err)
 	}
 
-	err = yaml.Unmarshal(data, config)
-	if err != nil {
+	if err = yaml.Unmarshal(data, config); err != nil {
 		fmt.Printf("Unable to parse config YAML \n %s \n", err)
 		panic(err)
 	}

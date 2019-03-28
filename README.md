@@ -8,7 +8,7 @@ A SQLite DB is used to store the GUID/FeedID combination which is checked when a
 In addition we also add the RSS feed's item GUID at the bottom of the issue description.  Before synchronising an RSS item
 we run an issue search in the associated project, if we dont find the GUID in any issue we assume its not already been created.
 This helps to guard against scenarios where you lose the SQLite DB and dont want RSS items reduplicating into Gitlab.
-If found in Gitlab it is marked as syncronised in the local database as well as printing an link to the existing issue(s) to stdout.
+If found in Gitlab it is marked as synchronised in the local database as well as printing an link to the existing issue(s) to stdout.
 
 ## Limiting what is initially synced.
 Each feed entry in the config file can have an "added_since" property set.  This is used to only sync RSS items that have a
