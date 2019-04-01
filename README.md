@@ -1,4 +1,7 @@
 # Gitlab RSS Sync
+![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/adamhf/gitlabrsssync.svg)
+![Docker Pulls](https://img.shields.io/docker/pulls/adamhf/gitlabrsssync.svg)
+
 Create Gitlab issues from RSS Feeds with optional labelling.  Created to monitor RSS feeds and bring posts to
 our attention (Security Releases, Product Updates etc)
 
