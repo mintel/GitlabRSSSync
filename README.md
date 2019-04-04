@@ -71,7 +71,8 @@ docker run -e GITLAB_API_TOKEN=<INSERT_TOKEN> -e DATA_DIR=/data -e CONFIG_DIR=/a
 ```
 ####Via docker-compose
 ```bash
-docker-compose up```
+docker-compose up
+```
 
 
 
