@@ -88,6 +88,3 @@ Feed URL: https://cloud.google.com/feeds/kubernetes-engine-release-notes.xml
 ### GKE Security Updates
 Feed URL: https://cloud.google.com/feeds/kubernetes-engine-security-bulletins.xml
 ![GKE Security updates](screenshots/GKESecurityUpdate.png "GKE Security updates")
-
-## TODO
-* Make the retroactive setting of the Gitlab creation time optional.
