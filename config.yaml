@@ -1,4 +1,4 @@
-interval: 300
+interval: 30
 feeds:
   - id: bbc_world
     feed_url: http://feeds.bbci.co.uk/news/england/rss.xml

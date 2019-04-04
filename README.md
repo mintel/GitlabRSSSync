@@ -69,6 +69,7 @@ issues in the projects you specify in the config file.
 ```bash
 docker run -e GITLAB_API_TOKEN=<INSERT_TOKEN> -e DATA_DIR=/data -e CONFIG_DIR=/app -v REDIS_URL=<REDIS_URL> -v REDIS_PASSWORD=<REDIS_PASSWORD> -v <PATH_TO_CONFIG_DIR>/config adamhf/rss-sync:latest
 ```
+
 ####Via docker-compose
 ```bash
 docker-compose up
