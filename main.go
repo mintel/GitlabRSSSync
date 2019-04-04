@@ -34,6 +34,7 @@ type Feed struct {
 	GitlabProjectID int `yaml:"gitlab_project_id"`
 	Labels          []string
 	AddedSince      time.Time `yaml:"added_since"`
+	Retroactive     bool
 }
 
 type EnvValues struct {
@@ -93,17 +94,17 @@ func (feed Feed) checkFeed(redisClient *redis.Client, gitlabClient *gitlab.Clien
 	log.Printf("Checked feed: %s, New articles: %d, Old articles: %d", feed.Name, len(newArticle), len(oldArticle))
 
 	for _, item := range newArticle {
-		var time *time.Time
-		// Prefer updated time to published
+		var itemTime *time.Time
+		// Prefer updated itemTime to published
 		if item.UpdatedParsed != nil {
-			time = item.UpdatedParsed
+			itemTime = item.UpdatedParsed
 		} else {
-			time = item.PublishedParsed
+			itemTime = item.PublishedParsed
 		}
 
-		if time.Before(feed.AddedSince) {
+		if itemTime.Before(feed.AddedSince) {
 			log.Printf("Ignoring '%s' as its date is before the specified AddedSince (Item: %s vs AddedSince: %s)\n",
-				item.Title, time, feed.AddedSince)
+				item.Title, itemTime, feed.AddedSince)
 			redisClient.SAdd(feed.ID, item.GUID)
 			continue
 		}
@@ -123,11 +124,17 @@ func (feed Feed) checkFeed(redisClient *redis.Client, gitlabClient *gitlab.Clien
 			body = item.Content
 		}
 
+		now := time.Now()
+		issueTime := &now
+		if feed.Retroactive {
+			issueTime = itemTime
+		}
+
 		issueOptions := &gitlab.CreateIssueOptions{
 			Title:       gitlab.String(item.Title),
 			Description: gitlab.String(body + "\n" + item.GUID),
 			Labels:      feed.Labels,
-			CreatedAt:   time,
+			CreatedAt:   issueTime,
 		}
 
 		if _, _, err := gitlabClient.Issues.CreateIssue(feed.GitlabProjectID, issueOptions); err != nil {
@@ -139,6 +146,9 @@ func (feed Feed) checkFeed(redisClient *redis.Client, gitlabClient *gitlab.Clien
 			continue
 		}
 		issuesCreatedCounter.Inc()
+		if feed.Retroactive {
+			log.Printf("Retroactively issue setting date to %s", itemTime)
+		}
 		log.Printf("Created Gitlab Issue '%s' in project: %d' \n", item.Title, feed.GitlabProjectID)
 	}
 }

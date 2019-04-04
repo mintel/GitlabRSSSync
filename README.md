@@ -7,11 +7,11 @@ our attention (Security Releases, Product Updates etc)
 
 ## Avoiding Duplication
 We try to be as clever as is reasonably possible in terms of not duplicating RSS feed items into Gitlab.
-A Redis DB is used to store the GUID/FeedID combination which is checked when assessing articles for synchronisation.
+A Redis database is used to store the GUID/FeedID combination which is checked when assessing articles for synchronisation.
 In addition we also add the RSS feed's item GUID at the bottom of the issue description.  Before synchronising an RSS item
 we run an issue search in the associated project, if we dont find the GUID in any issue we assume its not already been created.
-This helps to guard against scenarios where you lose the Redis DB and dont want RSS items reduplicating into Gitlab.
-If found in Gitlab it is marked as synchronised in the local database as well as printing an link to the existing issue(s) to stdout.
+This helps to guard against scenarios where you lose the Redis database and dont want RSS items reduplicating into Gitlab.
+If found in Gitlab it is marked as synchronised in the Redis database as well as printing an link to the existing issue(s) to stdout.
 
 ## Limiting what is initially synced.
 Each feed entry in the config file can have an "added_since" property set.  This is used to only sync RSS items that have a
@@ -42,14 +42,15 @@ feeds:
 | interval  | int  | yes      | The interval in seconds between feed checks |
 
 ### Feeds
-| Attribute         | Type   | Required | Description                                                                                           |
-|-------------------|--------|----------|-------------------------------------------------------------------------------------------------------|
-| id                | string | yes      | A feed ID that is used internally for duplicate detection.                                            |
-| feed_url          | string | yes      | The URL of the feed                                                                                   |
-| name              | string | yes      | A User friendly display name.                                                                         |
-| gitlab_project_id | int    | yes      | The Gitlab project ID to create issues under.                                                         |
-| added_since       | string | no       | For longer RSS feeds specify a ISO 8601 DateTime to exclude items published/updated earlier than this |
-| Labels            | Array  | no       | A list of labels to add to created Issues                                                             |
+| Attribute         | Type   | Required | Default | Description                                                                                              |
+|-------------------|--------|----------|---------|----------------------------------------------------------------------------------------------------------|
+| id                | string | yes      | n/a     | A feed ID that is used internally for duplicate detection.                                               |
+| feed_url          | string | yes      | n/a     | The URL of the feed                                                                                      |
+| name              | string | yes      | n/a     | A User friendly display name.                                                                            |
+| gitlab_project_id | int    | yes      | n/a     | The Gitlab project ID to create issues under.                                                            |
+| added_since       | string | no       | null    | For longer RSS feeds specify a ISO 8601 DateTime to exclude items published/updated earlier than this    |
+| labels            | Array  | no       | []      | A list of labels to add to created Issues                                                                |
+| retroactive       | bool   | no       | false   | If true the issue in Gitlab will have the same creation time as the RSS feed items updates/published time|
 
 
 
@@ -75,8 +76,6 @@ docker run -e GITLAB_API_TOKEN=<INSERT_TOKEN> -e DATA_DIR=/data -e CONFIG_DIR=/a
 docker-compose up
 ```
 
-
-
 ## Prometheus Metrics
 Two metrics (above and beyond what are exposed by the Go Prometheus library) are exposed on :8080/metrics
 * last_run_time - The time of the last feed checks, useful for creating alerts to check for successful runs.
@@ -89,7 +88,6 @@ Feed URL: https://cloud.google.com/feeds/kubernetes-engine-release-notes.xml
 ### GKE Security Updates
 Feed URL: https://cloud.google.com/feeds/kubernetes-engine-security-bulletins.xml
 ![GKE Security updates](screenshots/GKESecurityUpdate.png "GKE Security updates")
-
 
 ## TODO
 * Make the retroactive setting of the Gitlab creation time optional.

@@ -1,8 +1,10 @@
 interval: 300
+
 feeds:
   - id: reddit
     feed_url: https://www.reddit.com/.rss
     name: Reddit Front Page
     gitlab_project_id: 12345678
+    retroactive: false
     labels:
       - Reddit
