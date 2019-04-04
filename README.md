@@ -7,10 +7,10 @@ our attention (Security Releases, Product Updates etc)
 
 ## Avoiding Duplication
 We try to be as clever as is reasonably possible in terms of not duplicating RSS feed items into Gitlab.
-A SQLite DB is used to store the GUID/FeedID combination which is checked when assessing articles for synchronisation.
+A Redis DB is used to store the GUID/FeedID combination which is checked when assessing articles for synchronisation.
 In addition we also add the RSS feed's item GUID at the bottom of the issue description.  Before synchronising an RSS item
 we run an issue search in the associated project, if we dont find the GUID in any issue we assume its not already been created.
-This helps to guard against scenarios where you lose the SQLite DB and dont want RSS items reduplicating into Gitlab.
+This helps to guard against scenarios where you lose the Redis DB and dont want RSS items reduplicating into Gitlab.
 If found in Gitlab it is marked as synchronised in the local database as well as printing an link to the existing issue(s) to stdout.
 
 ## Limiting what is initially synced.
@@ -60,16 +60,20 @@ A Docker image is made available on [DockerHub](https://hub.docker.com/r/adamhf/
 * GITLAB_API_TOKEN - Gitlab personal access token that will be used to create Issues NOTE: You must have access to create
 issues in the projects you specify in the config file.
 * CONFIG_DIR - The directory the application should look for config.yaml in.
-* DATA_DIR - The directory the application should look for (or create) the state.db in.
-
-### Volume mounts
-Make sure the location of your DATA_DIR environment variable is set to a persistant volume / mount as the database
-that is contained within it stores the state of which RSS items have already been synced.
+* REDIS_URL - The URL of the Redis host e.g. `redis:6379`
+* REDIS_PASSWORD - Password for Redis, if an empty password is required set to `REDIS_PASSWORD=`
 
 ### Run it
+
+#### Via Docker
 ```bash
-docker run -e GITLAB_API_TOKEN=<INSERT_TOKEN> -e DATA_DIR=/data -e CONFIG_DIR=/app -v <PATH_TO_DATA_DIR>:/data -v <PATH_TO_CONFIG_DIR>/config adamhf/rss-sync:latest
+docker run -e GITLAB_API_TOKEN=<INSERT_TOKEN> -e DATA_DIR=/data -e CONFIG_DIR=/app -v REDIS_URL=<REDIS_URL> -v REDIS_PASSWORD=<REDIS_PASSWORD> -v <PATH_TO_CONFIG_DIR>/config adamhf/rss-sync:latest
 ```
+####Via docker-compose
+```bash
+docker-compose up```
+
+
 
 ## Prometheus Metrics
 Two metrics (above and beyond what are exposed by the Go Prometheus library) are exposed on :8080/metrics
