@@ -3,8 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/go-redis/redis"
 	"github.com/mmcdole/gofeed"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -37,16 +36,11 @@ type Feed struct {
 	AddedSince      time.Time `yaml:"added_since"`
 }
 
-type SyncedItems struct {
-	gorm.Model
-	UUID string
-	Feed string
-}
-
 type EnvValues struct {
-	DataDir      string
-	ConfDir      string
-	GitlabAPIKey string
+	RedisURL      string
+	RedisPassword string
+	ConfDir       string
+	GitlabAPIKey  string
 }
 
 func hasExistingGitlabIssue(guid string, projectID int, gitlabClient *gitlab.Client) bool {
@@ -56,12 +50,12 @@ func hasExistingGitlabIssue(guid string, projectID int, gitlabClient *gitlab.Cli
 	}
 	issues, _, err := gitlabClient.Search.IssuesByProject(projectID, guid, searchOptions)
 	if err != nil {
-		fmt.Printf("Unable to query Gitlab for existing issues\n")
+		log.Printf("Unable to query Gitlab for existing issues\n")
 	}
 	retVal := false
 	if len(issues) == 1 {
 		retVal = true
-		fmt.Printf("Found existing issues for %s in project (%s)\n", guid, issues[0].WebURL)
+		log.Printf("Found existing issues for %s in project (%s). Marking as syncronised.\n", guid, issues[0].WebURL)
 
 	} else if len(issues) > 1 {
 		retVal = true
@@ -69,26 +63,26 @@ func hasExistingGitlabIssue(guid string, projectID int, gitlabClient *gitlab.Cli
 		for _, issue := range issues {
 			urls = append(urls, issue.WebURL)
 		}
-		fmt.Printf("Found multiple existing issues for %s in project (%s)\n", guid, strings.Join(urls, ", "))
+		log.Printf("Found multiple existing issues for %s in project (%s)\n", guid, strings.Join(urls, ", "))
 	}
 
 	return retVal
 
 }
 
-func (feed Feed) checkFeed(db *gorm.DB, gitlabClient *gitlab.Client) {
+func (feed Feed) checkFeed(redisClient *redis.Client, gitlabClient *gitlab.Client) {
 	fp := gofeed.NewParser()
 	rss, err := fp.ParseURL(feed.FeedURL)
 
 	if err != nil {
-		fmt.Printf("Unable to parse feed %s: \n %s", feed.Name, err)
+		log.Printf("Unable to parse feed %s: \n %s", feed.Name, err)
 		return
 	}
 
 	var newArticle []*gofeed.Item
 	var oldArticle []*gofeed.Item
 	for _, item := range rss.Items {
-		found := !db.First(&SyncedItems{}, "feed = ? AND uuid = ?", feed.ID, item.GUID).RecordNotFound()
+		found := redisClient.SIsMember(feed.ID, item.GUID).Val()
 		if found == true {
 			oldArticle = append(oldArticle, item)
 		} else {
@@ -96,9 +90,7 @@ func (feed Feed) checkFeed(db *gorm.DB, gitlabClient *gitlab.Client) {
 		}
 	}
 
-	fmt.Printf("Feed Name: %s\n", feed.Name)
-	fmt.Printf("Old Items: %d\n", len(oldArticle))
-	fmt.Printf("New Items: %d\n", len(newArticle))
+	log.Printf("Checked feed: %s, New articles: %d, Old articles: %d", feed.Name, len(newArticle), len(oldArticle))
 
 	for _, item := range newArticle {
 		var time *time.Time
@@ -110,15 +102,16 @@ func (feed Feed) checkFeed(db *gorm.DB, gitlabClient *gitlab.Client) {
 		}
 
 		if time.Before(feed.AddedSince) {
-			fmt.Printf("Ignoring %s as its date is < the specified AddedSince (Item: %s vs AddedSince: %s)\n",
+			log.Printf("Ignoring '%s' as its date is before the specified AddedSince (Item: %s vs AddedSince: %s)\n",
 				item.Title, time, feed.AddedSince)
+			redisClient.SAdd(feed.ID, item.GUID)
 			continue
 		}
 
 		// Check Gitlab to see if we already have a matching issue there
 		if hasExistingGitlabIssue(item.GUID, feed.GitlabProjectID, gitlabClient) {
 			// We think its new but there is already a matching GUID in Gitlab.  Mark as Sync'd
-			db.Create(&SyncedItems{UUID: item.GUID, Feed: feed.ID})
+			redisClient.SAdd(feed.ID, item.GUID)
 			continue
 		}
 
@@ -138,15 +131,15 @@ func (feed Feed) checkFeed(db *gorm.DB, gitlabClient *gitlab.Client) {
 		}
 
 		if _, _, err := gitlabClient.Issues.CreateIssue(feed.GitlabProjectID, issueOptions); err != nil {
-			fmt.Printf("Unable to create Gitlab issue for %s \n %s \n", feed.Name, err)
+			log.Printf("Unable to create Gitlab issue for %s \n %s \n", feed.Name, err)
 			continue
 		}
-		if err := db.Create(&SyncedItems{UUID: item.GUID, Feed: feed.ID}).Error; err != nil {
-			fmt.Printf("Unable to persist in %s DB: %s \n", item.Title, err)
+		if err := redisClient.SAdd(feed.ID, item.GUID).Err(); err != nil {
+			log.Printf("Unable to persist in %s Redis: %s \n", item.Title, err)
 			continue
 		}
 		issuesCreatedCounter.Inc()
-		fmt.Printf("Created Gitlab Issue '%s' in project: %d' \n", item.Title, feed.GitlabProjectID)
+		log.Printf("Created Gitlab Issue '%s' in project: %d' \n", item.Title, feed.GitlabProjectID)
 	}
 }
 
@@ -159,14 +152,14 @@ func readConfig(path string) *Config {
 	}
 
 	if err = yaml.Unmarshal(data, config); err != nil {
-		fmt.Printf("Unable to parse config YAML \n %s \n", err)
+		log.Printf("Unable to parse config YAML \n %s \n", err)
 		panic(err)
 	}
 
 	return config
 }
 
-func initialise(env EnvValues) (db *gorm.DB, client *gitlab.Client, config *Config) {
+func initialise(env EnvValues) (redisClient *redis.Client, client *gitlab.Client, config *Config) {
 	gaugeOpts := prometheus.GaugeOpts{
 		Name: "last_run_time",
 		Help: "Last Run Time in Unix Seconds",
@@ -184,26 +177,30 @@ func initialise(env EnvValues) (db *gorm.DB, client *gitlab.Client, config *Conf
 	client = gitlab.NewClient(nil, env.GitlabAPIKey)
 	config = readConfig(path.Join(env.ConfDir, "config.yaml"))
 
-	db, err := gorm.Open("sqlite3", path.Join(env.DataDir, "state.db"))
-	if err != nil {
-		panic(err)
-	}
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:     env.RedisURL,
+		Password: env.RedisPassword,
+		DB:       0, // use default DB
+	})
 
-	db.AutoMigrate(&SyncedItems{})
+	if err := redisClient.Ping().Err(); err != nil {
+		panic(fmt.Sprintf("Unable to connect to Redis @ %s", env.RedisURL))
+	} else {
+		log.Printf("Connected to Redis @ %s", env.RedisURL)
+	}
 
 	return
 }
 
 func main() {
 	env := readEnv()
-	db, gitlabClient, config := initialise(env)
-	defer db.Close()
+	redisClient, gitlabClient, config := initialise(env)
 
 	go func() {
 		for {
-			fmt.Printf("Running checks at %s\n", time.Now().Format(time.RFC850))
+			log.Printf("Running checks at %s\n", time.Now().Format(time.RFC850))
 			for _, configEntry := range config.Feeds {
-				configEntry.checkFeed(db, gitlabClient)
+				configEntry.checkFeed(redisClient, gitlabClient)
 			}
 			lastRunGauge.SetToCurrentTime()
 			time.Sleep(time.Duration(config.Interval) * time.Second)
@@ -216,7 +213,7 @@ func main() {
 }
 
 func readEnv() EnvValues {
-	var gitlabPAToken, configDir, dataDir string
+	var gitlabPAToken, configDir, redisURL, redisPassword string
 	if envGitlabAPIToken := os.Getenv("GITLAB_API_TOKEN"); envGitlabAPIToken == "" {
 		panic("Could not find GITLAB_API_TOKEN specified as an environment variable")
 	} else {
@@ -227,15 +224,23 @@ func readEnv() EnvValues {
 	} else {
 		configDir = envConfigDir
 	}
-	if envDataDir := os.Getenv("DATA_DIR"); envDataDir == "" {
-		panic("Could not find DATA_DIR specified as an environment variable")
+	if envRedisURL := os.Getenv("REDIS_URL"); envRedisURL == "" {
+		panic("Could not find REDIS_URL specified as an environment variable")
 	} else {
-		dataDir = envDataDir
+		redisURL = envRedisURL
+	}
+
+	envRedisPassword, hasRedisPasswordEnv := os.LookupEnv("REDIS_PASSWORD")
+	if !hasRedisPasswordEnv {
+		panic("Could not find REDIS_PASSWORD specified as an environment variable, it may be empty but it must exist")
+	} else {
+		redisPassword = envRedisPassword
 	}
 
 	return EnvValues{
-		DataDir:      dataDir,
-		ConfDir:      configDir,
-		GitlabAPIKey: gitlabPAToken,
+		RedisURL:      redisURL,
+		RedisPassword: redisPassword,
+		ConfDir:       configDir,
+		GitlabAPIKey:  gitlabPAToken,
 	}
 }
