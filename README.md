@@ -63,12 +63,13 @@ issues in the projects you specify in the config file.
 * CONFIG_DIR - The directory the application should look for config.yaml in.
 * REDIS_URL - The URL of the Redis host e.g. `redis:6379`
 * REDIS_PASSWORD - Password for Redis, if an empty password is required set to `REDIS_PASSWORD=`
+* USE_SENTINEL - If set the REDIS_URL will be treated as a sentinel and the current master acquired via the sentinel.
 
 ### Run it
 
 #### Via Docker
 ```bash
-docker run -e GITLAB_API_TOKEN=<INSERT_TOKEN> -e CONFIG_DIR=/app -v REDIS_URL=<REDIS_URL> -v REDIS_PASSWORD=<REDIS_PASSWORD> -v <PATH_TO_CONFIG_DIR>/config adamhf/rss-sync:latest
+docker run -e GITLAB_API_TOKEN=<INSERT_TOKEN> -e CONFIG_DIR=/app -v REDIS_URL=<REDIS_URL> -v REDIS_PASSWORD=<REDIS_PASSWORD> -v ${PWD}:/config adamhf/rss-sync:latest
 ```
 
 #### Via docker-compose
@@ -80,6 +81,9 @@ docker-compose up
 Two metrics (above and beyond what are exposed by the Go Prometheus library) are exposed on :8080/metrics
 * last_run_time - The time of the last feed checks, useful for creating alerts to check for successful runs.
 * issues_created - The total number of issues created in Gitlab, useful to check for runaways.
+
+## Healthz Endpoint
+A /healthz endpoint is exposed on :8081/healthz which will fail if it is unable to connect to Redis.
 
 ## Example Issues
 ### GKE Release Notes

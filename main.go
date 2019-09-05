@@ -42,6 +42,7 @@ type EnvValues struct {
 	RedisPassword string
 	ConfDir       string
 	GitlabAPIKey  string
+	UseSentinel   bool
 }
 
 func hasExistingGitlabIssue(guid string, projectID int, gitlabClient *gitlab.Client) bool {
@@ -84,7 +85,7 @@ func (feed Feed) checkFeed(redisClient *redis.Client, gitlabClient *gitlab.Clien
 	var oldArticle []*gofeed.Item
 	for _, item := range rss.Items {
 		found := redisClient.SIsMember(feed.ID, item.GUID).Val()
-		if found == true {
+		if found {
 			oldArticle = append(oldArticle, item)
 		} else {
 			newArticle = append(newArticle, item)
@@ -187,11 +188,20 @@ func initialise(env EnvValues) (redisClient *redis.Client, client *gitlab.Client
 	client = gitlab.NewClient(nil, env.GitlabAPIKey)
 	config = readConfig(path.Join(env.ConfDir, "config.yaml"))
 
-	redisClient = redis.NewClient(&redis.Options{
-		Addr:     env.RedisURL,
-		Password: env.RedisPassword,
-		DB:       0, // use default DB
-	})
+	if !env.UseSentinel {
+		redisClient = redis.NewClient(&redis.Options{
+			Addr:     env.RedisURL,
+			Password: env.RedisPassword,
+			DB:       0, // use default DB
+		})
+	} else {
+		redisClient = redis.NewFailoverClient(&redis.FailoverOptions{
+			SentinelAddrs: []string{env.RedisURL},
+			Password:      env.RedisPassword,
+			MasterName:    "mymaster",
+			DB:            0, // use default DB
+		})
+	}
 
 	if err := redisClient.Ping().Err(); err != nil {
 		panic(fmt.Sprintf("Unable to connect to Redis @ %s", env.RedisURL))
@@ -205,7 +215,7 @@ func initialise(env EnvValues) (redisClient *redis.Client, client *gitlab.Client
 func main() {
 	env := readEnv()
 	redisClient, gitlabClient, config := initialise(env)
-
+	go checkLiveliness(redisClient)
 	go func() {
 		for {
 			log.Printf("Running checks at %s\n", time.Now().Format(time.RFC850))
@@ -224,6 +234,8 @@ func main() {
 
 func readEnv() EnvValues {
 	var gitlabPAToken, configDir, redisURL, redisPassword string
+	useSentinel := false
+
 	if envGitlabAPIToken := os.Getenv("GITLAB_API_TOKEN"); envGitlabAPIToken == "" {
 		panic("Could not find GITLAB_API_TOKEN specified as an environment variable")
 	} else {
@@ -247,10 +259,33 @@ func readEnv() EnvValues {
 		redisPassword = envRedisPassword
 	}
 
+	_, hasRedisSentinel := os.LookupEnv("USE_SENTINEL")
+	if hasRedisSentinel {
+		log.Printf("Running in sentinel mode")
+		useSentinel = true
+	}
+
 	return EnvValues{
 		RedisURL:      redisURL,
 		RedisPassword: redisPassword,
 		ConfDir:       configDir,
 		GitlabAPIKey:  gitlabPAToken,
+		UseSentinel:   useSentinel,
 	}
+}
+
+func checkLiveliness(client *redis.Client) {
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		if err := client.Ping().Err(); err != nil {
+			http.Error(w, "Unable to connect to the redis master", http.StatusInternalServerError)
+		} else {
+			fmt.Fprintf(w, "All is well!")
+		}
+	})
+
+	err := http.ListenAndServe(":8081", nil)
+	if err != nil {
+		log.Printf("Unable to start /healthz webserver")
+	}
+
 }
