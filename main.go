@@ -261,7 +261,7 @@ func readEnv() EnvValues {
 
 	_, hasRedisSentinel := os.LookupEnv("USE_SENTINEL")
 	if hasRedisSentinel {
-		log.Printf("Running in sentinel mode")
+		log.Printf("Running in sentinel aware mode")
 		useSentinel = true
 	}
 
