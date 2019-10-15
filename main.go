@@ -133,7 +133,7 @@ func (feed Feed) checkFeed(redisClient *redis.Client, gitlabClient *gitlab.Clien
 
 		issueOptions := &gitlab.CreateIssueOptions{
 			Title:       gitlab.String(item.Title),
-			Description: gitlab.String(body + "\n" + item.GUID),
+			Description: gitlab.String(body + "<br>" + item.Link +"<br>"+ item.GUID),
 			Labels:      feed.Labels,
 			CreatedAt:   issueTime,
 		}
