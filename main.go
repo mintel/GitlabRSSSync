@@ -235,7 +235,7 @@ func main() {
 }
 
 func readEnv() EnvValues {
-	var gitlabAPIBaseUrl, gitlabAPIToken, configDir, redisURL, redisPassword string
+	var gitlabAPIBaseUrl, gitlabPAToken, configDir, redisURL, redisPassword string
 	useSentinel := false
 
 	if envGitlabAPIBaseUrl := os.Getenv("GITLAB_API_BASE_URL"); envGitlabAPIBaseUrl == "https://gitlab.com/api/v4" {
@@ -246,7 +246,7 @@ func readEnv() EnvValues {
 	if envGitlabAPIToken := os.Getenv("GITLAB_API_TOKEN"); envGitlabAPIToken == "" {
 		panic("Could not find GITLAB_API_TOKEN specified as an environment variable")
 	} else {
-		gitlabAPIToken = envGitlabAPIToken
+		gitlabPAToken = envGitlabAPIToken
 	}
 	if envConfigDir := os.Getenv("CONFIG_DIR"); envConfigDir == "" {
 		panic("Could not find CONFIG_DIR specified as an environment variable")
@@ -276,7 +276,7 @@ func readEnv() EnvValues {
 		RedisURL:         redisURL,
 		RedisPassword:    redisPassword,
 		ConfDir:          configDir,
-		GitlabAPIKey:     gitlabAPIToken,
+		GitlabAPIKey:     gitlabPAToken,
 		GitlabAPIBaseUrl: gitlabAPIBaseUrl,
 		UseSentinel:      useSentinel,
 	}
