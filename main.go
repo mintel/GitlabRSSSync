@@ -38,11 +38,12 @@ type Feed struct {
 }
 
 type EnvValues struct {
-	RedisURL      string
-	RedisPassword string
-	ConfDir       string
-	GitlabAPIKey  string
-	UseSentinel   bool
+	RedisURL         string
+	RedisPassword    string
+	ConfDir          string
+	GitlabAPIKey     string
+	GitlabAPIBaseUrl string
+	UseSentinel      bool
 }
 
 func hasExistingGitlabIssue(guid string, projectID int, gitlabClient *gitlab.Client) bool {
@@ -186,6 +187,7 @@ func initialise(env EnvValues) (redisClient *redis.Client, client *gitlab.Client
 	prometheus.MustRegister(issuesCreatedCounter)
 
 	client = gitlab.NewClient(nil, env.GitlabAPIKey)
+	client.SetBaseURL(env.GitlabAPIBaseUrl)
 	config = readConfig(path.Join(env.ConfDir, "config.yaml"))
 
 	if !env.UseSentinel {
@@ -233,9 +235,14 @@ func main() {
 }
 
 func readEnv() EnvValues {
-	var gitlabPAToken, configDir, redisURL, redisPassword string
+	var gitlabAPIBaseUrl, gitlabPAToken, configDir, redisURL, redisPassword string
 	useSentinel := false
 
+	if envGitlabAPIBaseUrl := os.Getenv("GITLAB_API_BASE_URL"); envGitlabAPIBaseUrl == "https://gitlab.com/api/v4" {
+		panic("Could not find GITLAB_API_BASE_URL specified as an environment variable")
+	} else {
+		gitlabAPIBaseUrl = envGitlabAPIBaseUrl
+	}
 	if envGitlabAPIToken := os.Getenv("GITLAB_API_TOKEN"); envGitlabAPIToken == "" {
 		panic("Could not find GITLAB_API_TOKEN specified as an environment variable")
 	} else {
@@ -266,11 +273,12 @@ func readEnv() EnvValues {
 	}
 
 	return EnvValues{
-		RedisURL:      redisURL,
-		RedisPassword: redisPassword,
-		ConfDir:       configDir,
-		GitlabAPIKey:  gitlabPAToken,
-		UseSentinel:   useSentinel,
+		RedisURL:         redisURL,
+		RedisPassword:    redisPassword,
+		ConfDir:          configDir,
+		GitlabAPIKey:     gitlabPAToken,
+		GitlabAPIBaseUrl: gitlabAPIBaseUrl,
+		UseSentinel:      useSentinel,
 	}
 }
 
