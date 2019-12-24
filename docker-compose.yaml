@@ -16,6 +16,6 @@ services:
       - --
       - /app/rss_sync
   db:
-    image: 'bitnami/redis:latest'
+    image: 'redis:latest'
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
