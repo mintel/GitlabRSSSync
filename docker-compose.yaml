@@ -15,7 +15,9 @@ services:
       - --strict
       - --
       - /app/rss_sync
+    restart: unless-stopped
   db:
     image: 'redis:latest'
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
+    restart: unless-stopped
