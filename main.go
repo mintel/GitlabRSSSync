@@ -21,6 +21,7 @@ import (
 var addr = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
 var lastRunGauge prometheus.Gauge
 var issuesCreatedCounter prometheus.Counter
+var issueCreationErrorCounter prometheus.Counter
 
 type Config struct {
 	Feeds    []Feed
@@ -141,6 +142,7 @@ func (feed Feed) checkFeed(redisClient *redis.Client, gitlabClient *gitlab.Clien
 
 		if _, _, err := gitlabClient.Issues.CreateIssue(feed.GitlabProjectID, issueOptions); err != nil {
 			log.Printf("Unable to create Gitlab issue for %s \n %s \n", feed.Name, err)
+			issueCreationErrorCounter.Inc()
 			continue
 		}
 		if err := redisClient.SAdd(feed.ID, item.GUID).Err(); err != nil {
@@ -185,6 +187,13 @@ func initialise(env EnvValues) (redisClient *redis.Client, client *gitlab.Client
 	}
 	issuesCreatedCounter = prometheus.NewCounter(issuesCreatedCounterOpts)
 	prometheus.MustRegister(issuesCreatedCounter)
+
+	issueCreationErrorCountOpts := prometheus.CounterOpts{
+		Name: "issue_creation_error_count",
+		Help: "Number of failures in creating Gitlab issues",
+	}
+	issueCreationErrorCounter = prometheus.NewCounter(issueCreationErrorCountOpts)
+	prometheus.MustRegister(issueCreationErrorCounter)
 
 	client = gitlab.NewClient(nil, env.GitlabAPIKey)
 	client.SetBaseURL(env.GitlabAPIBaseUrl)
@@ -238,7 +247,7 @@ func readEnv() EnvValues {
 	var gitlabAPIBaseUrl, gitlabPAToken, configDir, redisURL, redisPassword string
 	useSentinel := false
 
-	if envGitlabAPIBaseUrl := os.Getenv("GITLAB_API_BASE_URL"); envGitlabAPIBaseUrl == "https://gitlab.com/api/v4" {
+	if envGitlabAPIBaseUrl := os.Getenv("GITLAB_API_BASE_URL"); envGitlabAPIBaseUrl == "" {
 		panic("Could not find GITLAB_API_BASE_URL specified as an environment variable")
 	} else {
 		gitlabAPIBaseUrl = envGitlabAPIBaseUrl

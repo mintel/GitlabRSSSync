@@ -16,6 +16,8 @@ services:
       - --
       - /app/rss_sync
     restart: unless-stopped
+    ports:
+      - "8080:8080"
   db:
     image: 'redis:latest'
     environment:
