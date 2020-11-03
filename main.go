@@ -182,19 +182,19 @@ func initialise(env EnvValues) (redisClient *redis.Client, client *gitlab.Client
 	prometheus.MustRegister(lastRunGauge)
 
 	issuesCreatedCounterOpts := prometheus.CounterOpts{
-		Name: "issues_created",
-		Help: "Number of issues created in Gitlab",
+		Name: "issue_creation_total",
+		Help: "The total number of issues created in Gitlab since start-up",
 	}
 	issuesCreatedCounter = prometheus.NewCounter(issuesCreatedCounterOpts)
 	prometheus.MustRegister(issuesCreatedCounter)
 
 	issueCreationErrorCountOpts := prometheus.CounterOpts{
-		Name: "issue_creation_error_count",
-		Help: "Number of failures in creating Gitlab issues",
+		Name: "issue_creation_error_total",
+		Help: "The total of failures in creating Gitlab issues since start-up",
 	}
+
 	issueCreationErrorCounter = prometheus.NewCounter(issueCreationErrorCountOpts)
 	prometheus.MustRegister(issueCreationErrorCounter)
-
 	client = gitlab.NewClient(nil, env.GitlabAPIKey)
 	client.SetBaseURL(env.GitlabAPIBaseUrl)
 	config = readConfig(path.Join(env.ConfDir, "config.yaml"))

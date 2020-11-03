@@ -58,6 +58,8 @@ feeds:
 A Docker image is made available on [DockerHub](https://hub.docker.com/r/adamhf/gitlabrsssync)
 
 ### Required Environment Variables
+* GITLAB_API_BASE_URL - The base Gitlab URL used, needs to be set to `https://gitlab.com/api/v4` for Gitlab hosted Gitlab.
+If you are self hosting gitlab it needs to be set to your custom gitlab domain including the `/api/<API VERSION>`
 * GITLAB_API_TOKEN - Gitlab personal access token that will be used to create Issues NOTE: You must have access to create
 issues in the projects you specify in the config file.
 * CONFIG_DIR - The directory the application should look for config.yaml in.
