@@ -82,7 +82,8 @@ docker-compose up
 ## Prometheus Metrics
 Two metrics (above and beyond what are exposed by the Go Prometheus library) are exposed on :8080/metrics
 * last_run_time - The time of the last feed checks, useful for creating alerts to check for successful runs.
-* issues_created - The total number of issues created in Gitlab, useful to check for runaways.
+* issue_creation_total - The total number of issues created in Gitlab, useful to check for runaways.
+* issue_creation_error_total - The total number of failures of issue creation in Gitlab.
 
 ## Healthz Endpoint
 A /healthz endpoint is exposed on :8081/healthz which will fail if it is unable to connect to Redis.
